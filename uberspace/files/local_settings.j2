@@ -11,6 +11,13 @@ DATABASES = {
             }
         }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'hagrid_cache_default',
+    }
+}
+
 STATIC_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ url }}/static/"
 MEDIA_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ url }}/media/"
 

@@ -91,6 +91,13 @@
       notify:
       - restart uwsgi
 
+    - name: django createcachetable
+      django_manage:
+        command: createcachetable
+        app_path: "{{ install_root }}hagrid"
+      notify:
+      - restart uwsgi
+
     - name: django collectstatic
       django_manage:
         command: collectstatic
