@@ -1,4 +1,4 @@
-ALLOWED_HOSTS = ['{{ url }}']
+ALLOWED_HOSTS = ['{{ domain }}']
 DEBUG = False
 
 DATABASES = {
@@ -18,8 +18,10 @@ CACHES = {
     }
 }
 
-STATIC_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ url }}/static/"
-MEDIA_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ url }}/media/"
+SITE_URL = 'https://{{ domain }}'
+
+STATIC_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ domain }}/static/"
+MEDIA_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ domain }}/media/"
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE =  True
