@@ -20,6 +20,11 @@ CACHES = {
 
 STATIC_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ url }}/static/"
 MEDIA_ROOT = "/var/www/virtual/{{ ansible_user }}/{{ url }}/media/"
+SITE_URL = "https://{{ url }}"
+
+ADMINS = [{% for admin in hagrid_admins -%}
+('{{ admin.name }}',{{ ' ' }}'{{ admin.mail }}'), 
+{%- endfor %}]
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE =  True
