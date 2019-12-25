@@ -84,6 +84,11 @@
       notify:
       - restart uwsgi
 
+    - name: Make sure database exists
+      mysql_db:
+        name: "{{ ansible_user }}_hagrid"
+        state: present
+
     - name: django migrate
       django_manage:
         command: migrate
