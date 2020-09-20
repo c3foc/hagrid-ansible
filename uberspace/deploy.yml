@@ -6,60 +6,66 @@
   gather_facts: false
 
   tasks:
+    - name: create django secret and set it as fact
+      block:
+      - name: create django_secret file
+        shell: "openssl rand -base64 32 > {{ install_root }}.django-secret"
+        args:
+          creates: "{{ install_root }}.django-secret"
+      - name: Read django_secret
+        shell: "cat {{ install_root }}.django-secret"
+        register: cmd_output
+      - name: Set django_secret as fact
+        set_fact:
+          django_secret: "{{ cmd_output.stdout }}"
+    - name: set up uberspace
+      block:
+      - name: uberspace add domain
+        shell: uberspace web domain add {{ domain }}
+        ignore_errors: yes  # if domain is added already, there is a non-zero exit code
+      - name: uberspace set application web backend
+        shell: uberspace web backend set {{ domain }}/ --http --port 8000
+      - name: uberspace set static web backend
+        shell: uberspace web backend set {{ domain }}/static/ --apache
 
-    - name: create django_secret file
-      shell: "openssl rand -base64 32 > {{ install_root }}.django-secret"
-      args:
-        creates: "{{ install_root }}.django-secret"
-    - name: Read django_secret
-      shell: "cat {{ install_root }}.django-secret"
-      register: cmd_output
-    - name: Set django_secret as fact
-      set_fact:
-        django_secret: "{{ cmd_output.stdout }}"
+        # as we don't have private media files, we can serve them via apache
+      - name: uberspace set media web backend
+        shell: uberspace web backend set {{ domain }}/media/ --apache
 
-    - name: uberspace add domain
-      shell: uberspace web domain add {{ domain }}
-      ignore_errors: yes  # if domain is added already, there is a non-zero exit code
-    - name: uberspace set application web backend
-      shell: uberspace web backend set {{ domain }}/ --http --port 8000
-    - name: uberspace set static web backend
-      shell: uberspace web backend set {{ domain }}/static/ --apache
+    - name: set database password as fact
+      block:
+      - name: Read Database password
+        shell: my_print_defaults client | grep password | cut -d "=" -f 2
+        register: cmd_output
+      - name: Set database password as fact
+        set_fact:
+          db_password: "{{ cmd_output.stdout }}"
 
-      # as we don't have private media files, we can serve them via apache
-    - name: uberspace set media web backend
-      shell: uberspace web backend set {{ domain }}/media/ --apache
-
-    - name: Read Database password
-      shell: my_print_defaults client | grep password | cut -d "=" -f 2
-      register: cmd_output
-    - name: Set database password as fact
-      set_fact:
-        db_password: "{{ cmd_output.stdout }}"
-
-    - name: install uwsgi via pip
-      pip:
-        name: uwsgi
-        executable: ~/.local/bin/pip3
-        extra_args: --user
-      notify:
-      - restart uwsgi
-    - name: copy uwsgi config
-      template: src=files/uwsgi.j2 dest=~/etc/services.d/uwsgi.ini
-      notify:
-      - restart uwsgi
-    - name: create uwsgi apps-enabled directory
-      file:
-        path: ~/uwsgi/apps-enabled
-        state: directory
-    - name: create uwsgi err.log file
-      file:
-        path: ~/uwsgi/err.log
-        state: file
-    - name: create uwsgi out.log file
-      file:
-        path: ~/uwsgi/out.log
-        state: file
+    - name: install and set up uwsgi
+      block:
+      - name: install uwsgi via pip
+        pip:
+          name: uwsgi
+          executable: ~/.local/bin/pip3
+          extra_args: --user
+        notify:
+        - restart uwsgi
+      - name: copy uwsgi config
+        template: src=files/uwsgi.j2 dest=~/etc/services.d/uwsgi.ini
+        notify:
+        - restart uwsgi
+      - name: create uwsgi apps-enabled directory
+        file:
+          path: ~/uwsgi/apps-enabled
+          state: directory
+      - name: create uwsgi err.log file
+        file:
+          path: ~/uwsgi/err.log
+          state: file
+      - name: create uwsgi out.log file
+        file:
+          path: ~/uwsgi/out.log
+          state: file
 
     - name: Clone/pull project repo
       git: 
