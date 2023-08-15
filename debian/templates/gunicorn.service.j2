@@ -1,0 +1,20 @@
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+Type=notify
+# the specific user that our service will run as
+User=hagrid
+Group=hagrid
+RuntimeDirectory=gunicorn
+WorkingDirectory=/home/hagrid/
+ExecStart=/home/hagrid/venv/bin/gunicorn hagrid.wsgi
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

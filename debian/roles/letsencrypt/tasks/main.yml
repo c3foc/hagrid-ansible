@@ -1,0 +1,39 @@
+---
+# following https://www.digitalocean.com/community/tutorials/how-to-acquire-a-let-s-encrypt-certificate-using-ansible-on-ubuntu-18-04
+
+- name: "Create /etc/letsencrypt/"
+  file:
+    path: "/etc/letsencrypt/"
+    state: directory
+    owner: root
+    group: root
+    mode: u=rwx,g=x,o=x
+
+- name: "install Lego"
+  shell: |
+    mkdir -p Lego/
+    cd Lego/
+    wget "https://github.com/go-acme/lego/releases/download/v{{ lego_version }}/lego_v{{ lego_version }}_linux_amd64.tar.gz"
+    tar xf "lego_v{{ lego_version }}_linux_amd64.tar.gz"
+    mv lego /usr/local/bin/lego
+  args:
+    chdir: /root
+    creates: /root/Lego/lego_v{{ lego_version }}_linux_amd64.tar.gz
+
+- name: "Run lego for initial certificate"
+  shell: 'lego {{ lego_flags }} run'
+  args:
+    creates: "/etc/letsencrypt/accounts/acme-v02.api.letsencrypt.org/"
+
+- name: "ensure renew-hook.sh"
+  template:
+    src: templates/renew-hook.sh.j2
+    dest: /root/Lego/renew-hook.sh
+    mode: "0744"
+
+- name: "ensure cert renewal cron job"
+  cron:
+    name: "lego letscencrypt certificate renewal"
+    hour: "3"
+    minute: "7"  # run every night at 03:07 (somewhat random to not strain letsencrypt)
+    job: 'lego {{ lego_flags }} renew --renew-hook="/root/Lego/renew-hook.sh"'

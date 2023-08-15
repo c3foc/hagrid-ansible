@@ -1,6 +1,11 @@
 
 # hagrid-ansible
 
+## debian
+
+```bash 
+ansible-galaxy install nginxinc.nginx
+```
 
 ## Uberspace
 

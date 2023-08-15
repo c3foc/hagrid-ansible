@@ -1,0 +1,21 @@
+---
+- name: Install hagrid
+  hosts: hagrid_hosts
+  roles:
+    - role: nginxinc.nginx
+      become: yes
+    - role: letsencrypt
+      become: yes
+    - role: django_hagrid
+
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+      become: yes
+    - name: Restart gunicorn
+      service:
+        name: gunicorn
+        state: restarted
+      become: yes

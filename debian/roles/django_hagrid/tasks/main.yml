@@ -1,0 +1,165 @@
+---
+- name: Install needed packages with apt
+  become: yes
+  apt:
+    name:
+      - git
+      - gettext
+      - acl
+      - python3.11-venv
+      - build-essential
+      - python3-dev
+      - libpq-dev
+      - ufw
+    state: present
+    update_cache: yes
+
+- name: create hagrid group
+  become: yes
+  ansible.builtin.group:
+    name: hagrid
+    state: present
+
+- name: create hagrid user with ssh key
+  become: yes
+  # The github ssh key is used to install plugins from private repositories
+  # needs to be added manually to github, then run playbook again
+  ansible.builtin.user:
+    name: hagrid
+    group: hagrid
+    shell: /bin/bash
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa_github
+
+# hagrid installation
+- name: Install hagrid, plugins and tools
+  become: yes
+  become_user: hagrid
+  block:
+    - name: install hagrid
+      ansible.builtin.pip:
+        virtualenv: /home/hagrid/venv
+        virtualenv_command: "python3 -m venv"
+        name: hagrid
+        state: latest
+    - name: install tools to host hagrid
+      ansible.builtin.pip:
+        virtualenv: /home/hagrid/venv
+        name:
+          - gunicorn
+          - pip
+        state: "latest"
+
+# create hagrid config and secrets
+- name: create django secret
+  no_log: true
+  become: yes
+  become_user: hagrid
+  block:
+    - name: create django_secret file
+      shell: "openssl rand -base64 50 | tr -cd '[:alnum:]' > ~/.django-secret"
+      args:
+        creates: "~/.django-secret"
+    - name: Read django_secret
+      shell: "cat ~/.django-secret"
+      register: cmd_output
+    - name: Set django_secret as fact
+      set_fact:
+        django_secret: "{{ cmd_output.stdout }}"
+    - name: create vapid key folder
+      file:
+        path: ~/vapid/
+        state: directory
+        owner: hagrid
+        group: hagrid
+    - name: Create vapid keys
+      shell: "~/venv/bin/vapid --gen"
+      args:
+        chdir: "~/vapid/"
+        creates: "private_key.pem"
+
+
+# crate hagrid data folders
+- name: create data files folder
+  file:
+    path: /var/hagrid/
+    state: directory
+    owner: hagrid
+    group: hagrid
+  become: yes
+
+# hagrid migration etc.
+- name: migrate and build hagrid
+  become: yes
+  become_user: hagrid
+  block:
+    - name: django migrate
+      shell: ~/venv/bin/python -m hagrid migrate
+    - name: django collectstatic
+      shell: ~/venv/bin/python -m hagrid collectstatic --no-input
+      notify:
+        - Restart gunicorn
+    - name: django compilemessages
+      shell: ~/venv/bin/python -m hagrid compilemessages
+      notify:
+        - Restart gunicorn
+
+# unicorn, nginx, firewall
+- name: Add gunicorn service
+  template:
+    src: gunicorn.service.j2
+    dest: /etc/systemd/system/gunicorn.service
+  notify: Restart gunicorn
+  become: yes
+- name: Add gunicorn socket
+  template:
+    src: gunicorn.socket.j2
+    dest: /etc/systemd/system/gunicorn.socket
+  notify: Restart gunicorn
+  become: yes
+- name: Enable gunicorn.socket service
+  ansible.builtin.systemd:
+    name: gunicorn.socket
+    enabled: true
+    daemon_reload: true
+  become: yes
+
+- name: enable UFW
+  community.general.ufw:
+    state: enabled
+    policy: deny
+  become: yes
+
+- community.general.ufw:
+    rule: allow
+    name: OpenSSH
+  become: yes
+
+- name: Allow all access to tcp port 80
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+  become: yes
+
+- name: Allow all access to tcp port 443
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+  become: yes
+
+- name: Load ssl config files
+  # https://ssl-config.mozilla.org/
+  become: true
+  ansible.builtin.get_url:
+    url: https://ssl-config.mozilla.org/ffdhe2048.txt
+    dest: /etc/letsencrypt/mozilla-dhparam
+    mode: 0644
+- name: Apply Nginx template
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/conf.d/default.conf
+  notify: Restart Nginx
+  become: yes
