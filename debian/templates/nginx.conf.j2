@@ -41,14 +41,14 @@ server {
     }
 
     location /static/ {
-        alias /var/hagrid/data/static/;
+        alias /var/hagrid/static/;
         access_log off;
         expires 300s;
         add_header Cache-Control "public";
     }
 
     location /media/ {
-        alias /var/hagrid/data/media/;
+        alias /var/hagrid/media/;
         access_log off;
         expires 300s;
         add_header Cache-Control "public";

@@ -9,16 +9,16 @@
     group: root
     mode: u=rwx,g=x,o=x
 
-- name: "install Lego"
-  shell: |
-    mkdir -p Lego/
-    cd Lego/
-    wget "https://github.com/go-acme/lego/releases/download/v{{ lego_version }}/lego_v{{ lego_version }}_linux_amd64.tar.gz"
-    tar xf "lego_v{{ lego_version }}_linux_amd64.tar.gz"
-    mv lego /usr/local/bin/lego
-  args:
-    chdir: /root
-    creates: /root/Lego/lego_v{{ lego_version }}_linux_amd64.tar.gz
+#- name: "install Lego"
+#  shell: |
+#    mkdir -p Lego/
+#    cd Lego/
+#    wget "https://github.com/go-acme/lego/releases/download/v{{ lego_version }}/lego_v{{ lego_version }}_linux_amd64.tar.gz"
+#    tar xf "lego_v{{ lego_version }}_linux_amd64.tar.gz"
+#    mv lego /usr/local/bin/lego
+#  args:
+#    chdir: /root
+#    creates: /root/Lego/lego_v{{ lego_version }}_linux_amd64.tar.gz
 
 - name: "Run lego for initial certificate"
   shell: 'lego {{ lego_flags }} run'

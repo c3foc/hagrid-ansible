@@ -41,7 +41,7 @@
       ansible.builtin.pip:
         virtualenv: /home/hagrid/venv
         virtualenv_command: "python3 -m venv"
-        name: hagrid
+        name: "git+https://github.via-ipv6.com/c3foc/hagrid.git@master"
         state: latest
     - name: install tools to host hagrid
       ansible.builtin.pip:
@@ -67,17 +67,7 @@
     - name: Set django_secret as fact
       set_fact:
         django_secret: "{{ cmd_output.stdout }}"
-    - name: create vapid key folder
-      file:
-        path: ~/vapid/
-        state: directory
-        owner: hagrid
-        group: hagrid
-    - name: Create vapid keys
-      shell: "~/venv/bin/vapid --gen"
-      args:
-        chdir: "~/vapid/"
-        creates: "private_key.pem"
+
 
 
 # crate hagrid data folders
@@ -101,7 +91,7 @@
       notify:
         - Restart gunicorn
     - name: django compilemessages
-      shell: ~/venv/bin/python -m hagrid compilemessages
+      shell: cd ~ && ~/venv/bin/python -m hagrid compilemessages
       notify:
         - Restart gunicorn
 
